@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="board-show" >
+        <div class="left-block">
+            <h1>{{ board.name }}</h1>
+            <img src="{{ url_for('uploaded_file', filename=('analyzed' + board.filename)) }}" alt="{{ board.name }}" width="800"></img>
+            <a class="btn btn-primary" style="width: 100px; margin-top: 20px" href="/boards">Return</a>
+        </div>
+        <div class="cards">
+            <h1> Fusions </h1>
+            {% for block in fusions %}
+                <div class="fusion">
+                    <img src="{{ url_for('static', filename=('large_cards/' + block[0] + '.jpeg')) }}"" alt="{{ board.name }}" width="150"></img>
+                    <img src="{{ url_for('static', filename=('large_cards/' + block[1] + '.jpeg')) }}"" alt="{{ board.name }}" width="150"></img>
+                    <img src="{{ url_for('static', filename=('large_cards/' + block[2] + '.jpeg')) }}"" alt="{{ board.name }}" width="150"></img>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
