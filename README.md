@@ -89,7 +89,7 @@ I let ZAP output the results into an HTML report. I then used ChatGPT to summari
 - **Informational Risk, Medium Confidence:** 
   - Information Disclosure - Suspicious Comments at [http://127.0.0.1:5000/register](http://127.0.0.1:5000/register)
 
-## Solutions for Vulnerabilities
+## Alerted vulnerabilities
 
 ### SQL Injection
 
@@ -198,4 +198,303 @@ path = safe_join('/path/to/allowed/directory', user_provided_input)
 4. **Restrict File Access:** Configure your web server or application to restrict access to sensitive directories. For instance, utilize proper permissions and access controls to limit file system access.
 
 5. **Security Libraries:** Consider using security-focused libraries or middleware designed for Flask security, such as Flask-Security or Flask-Principal. These might offer additional protections against path traversal and other vulnerabilities.
+
+### Absence of Anti-CSRF Tokens
+
+Absence of Anti-CSRF Tokens at:
+
+- GET: http://127.0.0.1:5000/login
+- GET: http://127.0.0.1:5000/register
+- POST: http://127.0.0.1:5000/login
+
+#### ZAPs solution
+
+Phase: Architecture and Design
+Use a vetted library or framework that does not allow this weakness to occur or provides constructs that make this weakness easier to avoid.
+For example, use anti-CSRF packages such as the OWASP CSRFGuard.
+
+Phase: Implementation
+Ensure that your application is free of cross-site scripting issues, because most CSRF defenses can be bypassed using attacker-controlled script.
+
+Phase: Architecture and Design
+Generate a unique nonce for each form, place the nonce into the form, and verify the nonce upon receipt of the form. Be sure that the nonce is not predictable (CWE-330).
+Note that this can be bypassed using XSS.
+
+Identify especially dangerous operations. When the user performs a dangerous operation, send a separate confirmation request to ensure that the user intended to perform that operation.
+Note that this can be bypassed using XSS.
+
+Use the ESAPI Session Management control.
+This control includes a component for CSRF.
+
+Do not use the GET method for any request that triggers a state change.
+
+Phase: Implementation
+Check the HTTP Referer header to see if the request originated from an expected page. This could break legitimate functionality, because users or proxies may have disabled sending the Referer for privacy reasons.
+
+#### Flask solution
+
+1. Use the Flask-WTF Extension:
+
+Install Flask-WTF, an extension that simplifies form handling and includes CSRF protection.
+
+Use `pip` to install it: `pip install Flask-WTF`
+
+2. Initialize Flask-WTF:
+
+In your Flask application, import and initialize the Flask-WTF extension.
+
+```python
+from flask_wtf import CSRFProtect
+
+app = Flask(__name__)
+csrf = CSRFProtect(app)
+```
+
+3. Implement CSRF Protection in Forms:
+
+In your HTML forms, include the CSRF token using the `{{ form.csrf_token }}` template variable provided by Flask-WTF.
+
+```html
+<form method="post">
+	{{ form.hidden_tag() }}
+	<!-- Other form fields -->
+	<button type="submit">Submit</button>
+</form>
+```
+
+4. Validate CSRF Tokens:
+
+Flask-WTF automatically handles CSRF token validation on form submissions. Ensure that your views check for CSRF protection by using decorators:
+
+```python
+from flask_wtf import csrf
+
+@app.route('/your_route', methods=['POST'])
+@csrf.protect
+def your_view():     
+	# Handle form submission
+```
+
+### Content Security Policy (CSP) Header not set
+
+Content Security Policy (CSP) Header not set on:
+
+- GET: http://127.0.0.1:5000
+- GET: http://127.0.0.1:5000/
+- GET: http://127.0.0.1:5000/login
+- GET: http://127.0.0.1:5000/register
+- GET: http://127.0.0.1:5000/robots.txt
+- GET: http://127.0.0.1:5000/sitemap.xml
+- POST: http://127.0.0.1:5000/login
+- POST: http://127.0.0.1:5000/register
+
+#### ZAPs solution
+
+Ensure that your web server, application server, load balancer, etc. is configured to set the Content-Security-Policy header.
+
+#### Flask solution
+
+1. Create a CSP Policy:
+
+- Define your Content Security Policy by specifying trusted sources for various types of resources like scripts, styles, fonts, etc. For instance:
+
+```python
+csp_policy = {    
+		'default-src': '\'self\'',
+		'script-src': ['\'self\'', 'https://example.com'],
+		'style-src': ['\'self\'', 'https://example.com'],
+		# Add more directives as per your application's requirements
+}
+```
+
+2. Implement CSP in Flask:
+
+- In your Flask application, use a `before_request` decorator to set the CSP header for each request.
+
+```python
+
+from flask import Flask, Response  
+
+app = Flask(__name__)  
+
+@app.before_request
+	def add_csp_header(): 
+	    csp = "; ".join([f"{key} {value}" for key, value in csp_policy.items()])
+	    resp = Response()
+	    resp.headers['Content-Security-Policy'] = csp
+	    return resp
+```
+
+### Missing Anti-clickjacking Header
+
+The response does not include either Content-Security-Policy with 'frame-ancestors' directive or X-Frame-Options to protect against 'ClickJacking' attacks on:
+
+- GET: http://127.0.0.1:5000
+- GET: http://127.0.0.1:5000/
+- GET: http://127.0.0.1:5000/login
+- GET: http://127.0.0.1:5000/register
+- POST: http://127.0.0.1:5000/login
+
+#### ZAPs Solution
+
+Modern Web browsers support the Content-Security-Policy and X-Frame-Options HTTP headers. Ensure one of them is set on all web pages returned by your site/app.
+If you expect the page to be framed only by pages on your server (e.g. it's part of a FRAMESET) then you'll want to use SAMEORIGIN, otherwise if you never expect the page to be framed, you should use DENY. Alternatively consider implementing Content Security Policy's "frame-ancestors" directive.
+
+#### Flask solution
+
+##### Set X-Frame-Options Header
+
+Implement the `X-Frame-Options` header in your Flask application to mitigate clickjacking risks. For instance:
+
+```python
+from flask import Flask, Response
+
+app = Flask(__name__)
+@app.after_request 
+def set_headers(response):
+	response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+	return response
+```
+
+### Application Error Disclosure
+
+Application error disclosure with HTTP/1.1 500 INTERNAL SERVER ERROR on:
+
+- POST: http://127.0.0.1:5000/register
+
+#### ZAPs solution
+
+Review the source code of this page. Implement custom error pages. Consider implementing a mechanism to provide a unique error reference/identifier to the client (browser) while logging the details on the server side and not exposing them to the user.
+
+#### Flask solution
+
+1. Implement Custom Error Handling
+
+- Use Flask's error handling mechanism to create custom error pages for different error codes, including HTTP 500.
+
+```python
+from flask import Flask, render_template
+
+app = Flask(__name__)
+@app.errorhandler(500)
+def internal_server_error(e):
+	return render_template('500.html'), 500
+```
+
+2. Create Custom Error Templates:
+
+- Design custom error templates (e.g., `500.html`) to display a user-friendly message without revealing sensitive information.
+
+```html
+<!-- 500.html --> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Internal Server Error</title>
+</head>
+<body>
+	<h1>Sorry, something went wrong.</h1>
+	<!-- Additional friendly message or guidance --> </body>
+</html>
+```
+
+### Information Disclosure - Debug Error Messages
+
+The response appeared to contain common error messages returned by platforms such as ASP.NET, and Web-servers such as IIS and Apache on:
+
+- POST: http://127.0.0.1:5000/register
+
+#### ZAPs solution
+
+Disable debugging messages before pushing to production.
+
+#### Flask solution
+
+##### Disable Debug Mode in Production:
+
+- Ensure that your Flask application runs in production mode without the debug option enabled. Debug mode should only be used during development.
+
+```python
+app = Flask(__name__) app.config['DEBUG'] = False
+```
+
+##### Remove Stack Trace from Error Messages:
+
+- Disable the display of detailed error messages, including stack traces, by setting `PROPAGATE_EXCEPTIONS` and `EXPLAIN_TEMPLATE_LOADING` to `False`.
+
+```python
+app.config['PROPAGATE_EXCEPTIONS'] = False app.config['EXPLAIN_TEMPLATE_LOADING'] = False
+```
+
+### Server Leaks Version Information via HTTP
+
+Server Leaks Version Information "Werkzeug/2.3.7 Python/3.9.12" on:
+
+- GET: http://127.0.0.1:5000
+- GET: http://127.0.0.1:5000/
+- GET: http://127.0.0.1:5000/login
+- GET: http://127.0.0.1:5000/register
+- GET: http://127.0.0.1:5000/robots.txt
+- GET: http://127.0.0.1:5000/sitemap.xml
+- GET: http://127.0.0.1:5000/static/assets/fm_logo.png
+- GET: http://127.0.0.1:5000/static/css/styles.css
+- GET: http://127.0.0.1:5000/static/js/navbar.js
+- GET: http://127.0.0.1:5000/static/js/validation.js
+- POST: http://127.0.0.1:5000/login
+- POST: http://127.0.0.1:5000/register
+
+#### ZAPs Solution
+
+Ensure that your web server, application server, load balancer, etc. is configured to suppress the "Server" header or provide generic details.
+#### Flask solution
+
+##### Modify Server Response Header:
+
+- Override the default server header with a generic or custom value to hide the specific server and version information.
+
+```python
+from flask import Flask
+app = Flask(__name__)
+@app.after_request
+def remove_server_header(response):
+	response.headers['Server'] = 'Custom Server'
+    return response`
+```
+
+### X-Content-Type-Options Header Missing
+
+X-Content-Type-Options Header Missing on:
+
+- GET: http://127.0.0.1:5000
+- GET: http://127.0.0.1:5000/
+- GET: http://127.0.0.1:5000/login
+- GET: http://127.0.0.1:5000/register
+- GET: http://127.0.0.1:5000/static/assets/fm_logo.png
+- GET: http://127.0.0.1:5000/static/css/styles.css
+- GET: http://127.0.0.1:5000/static/js/navbar.js
+- GET: http://127.0.0.1:5000/static/js/validation.js
+- POST: http://127.0.0.1:5000/login
+
+#### ZAPs Solution
+
+Ensure that the application/web server sets the Content-Type header appropriately, and that it sets the X-Content-Type-Options header to 'nosniff' for all web pages.
+If possible, ensure that the end user uses a standards-compliant and modern web browser that does not perform MIME-sniffing at all, or that can be directed by the web application/web server to not perform MIME-sniffing.
+
+#### Flask solution
+
+##### Set X-Content-Type-Options Header
+
+Implement the `X-Content-Type-Options` header in your Flask application's response headers.
+
+```python
+from flask import Flask, Response
+
+app = Flask(__name__)
+@app.after_request def set_headers(response):
+	response.headers['X-Content-Type-Options'] = 'nosniff'
+	return response
+```
+
+## Implementation
 

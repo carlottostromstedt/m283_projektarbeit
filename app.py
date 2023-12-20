@@ -3,7 +3,7 @@ import re
 import uuid
 import numpy as np
 from cv2 import *
-from flask import Flask, render_template, request, url_for, redirect
+from flask import Flask, render_template, request, url_for, redirect, Markup
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
 from flask_bcrypt import Bcrypt
@@ -56,8 +56,12 @@ def loader_user(user_id):
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        hashed_password = bcrypt.generate_password_hash(request.form.get("password")).decode('utf-8')
-        user = Users(username=request.form.get("username"), password=hashed_password)
+        sanitized_password = SQLAlchemy.text(request.form.get("password"))
+        sanitized_username = SQLAlchemy.text(request.form.get("username"))
+        safe_password = Markup.escape(sanitized_password)
+        safe_username = Markup.escape(sanitized_username)
+        hashed_password = bcrypt.generate_password_hash(safe_password).decode('utf-8')
+        user = Users(username=safe_username, password=hashed_password)
         db.session.add(user)
         db.session.commit()
         return redirect(url_for("login"))
@@ -67,8 +71,12 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        user = Users.query.filter_by(username=request.form.get("username")).first()
-        if user and bcrypt.check_password_hash(user.password, request.form.get("password")):
+        sanitized_password = SQLAlchemy.text(request.form.get("password"))
+        sanitized_username = SQLAlchemy.text(request.form.get("username"))
+        safe_password = Markup.escape(sanitized_password)
+        safe_username = Markup.escape(sanitized_username)
+        user = Users.query.filter_by(username=safe_username).first()
+        if user and bcrypt.check_password_hash(user.password, safe_password):
             login_user(user)
             return redirect(url_for("home"))
     return render_template("login.html")
