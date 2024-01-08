@@ -498,3 +498,28 @@ app = Flask(__name__)
 
 ## Implementation
 
+## SQL Injection
+
+In my project i used sanitization to prevent SQL injection. 
+
+### Sanitization
+
+I used SQLAlchemys `.text` function and the builtin flask library Markup, with `Markup.escape` to sanitize the user-input from my sign-up and login form. This strips the input from special characters which could lead to an input being intrepreted as code.
+
+`app.py:59-62`
+
+```python
+from flask import Markup
+from flask_sqlalchemy import SQLAlchemy
+
+sanitized_password = SQLAlchemy.text(request.form.get("password"))
+sanitized_username = SQLAlchemy.text(request.form.get("username"))
+safe_password = Markup.escape(sanitized_password)
+safe_username = Markup.escape(sanitized_username)
+```
+
+# Summary
+
+I was able to use ZAP to scan my Application for vulnerabilities. I was able to analyse this scan and gather general suggestions from ZAP for patching the vulnerablilites. Additionally i put together Flask specific suggestions for each of the vulnerablility and how one could patch the Application.
+
+Due to time constraints i was only able to implement patches for SQL-Injection. I did however learn a lot and in the future i will take these vulnerabilities into consideration when designing web applications. 
