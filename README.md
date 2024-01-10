@@ -151,9 +151,13 @@ users = User.query.filter_by(username=user_input).all()
 
 3. **Input Validation and Sanitization:** Validate and sanitize user inputs to ensure they match expected data types and formats. Use validation libraries or custom validation logic to prevent malicious inputs.
 
-4. **Avoid Dynamic SQL:** Minimize dynamic construction of SQL queries based on user inputs. Prefer static SQL queries or parameterized queries to mitigate injection risks.
+Example using SQLAlchemy ORM and Markup:
 
-5. **Least Privilege Principle:** Ensure the database user used by your Flask application has limited privileges, only granting necessary access to perform required operations.
+```python
+from flask import Markup
+from flask_sqlalchemy import SQLAlchemy
+```
+
 ### Path traversal
 
 Path Traversal at [http://127.0.0.1:5000/register](http://127.0.0.1:5000/register)
@@ -192,12 +196,6 @@ from werkzeug.utils import safe_join
 
 path = safe_join('/path/to/allowed/directory', user_provided_input)
 ```
-
-3. **Serve Files Safely:** If your application serves files, avoid using user-provided input directly as a path. Instead, validate the path and retrieve the file using secure methods.
-
-4. **Restrict File Access:** Configure your web server or application to restrict access to sensitive directories. For instance, utilize proper permissions and access controls to limit file system access.
-
-5. **Security Libraries:** Consider using security-focused libraries or middleware designed for Flask security, such as Flask-Security or Flask-Principal. These might offer additional protections against path traversal and other vulnerabilities.
 
 ### Absence of Anti-CSRF Tokens
 
@@ -244,35 +242,21 @@ Use `pip` to install it: `pip install Flask-WTF`
 In your Flask application, import and initialize the Flask-WTF extension.
 
 ```python
-from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect
 
-app = Flask(__name__)
 csrf = CSRFProtect(app)
 ```
 
 3. Implement CSRF Protection in Forms:
 
-In your HTML forms, include the CSRF token using the `{{ form.csrf_token }}` template variable provided by Flask-WTF.
+In your HTML forms, include the CSRF token using the `{{ csrf_token() }}` template variable provided by Flask-WTF.
 
 ```html
 <form method="post">
-	{{ form.hidden_tag() }}
+	<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 	<!-- Other form fields -->
 	<button type="submit">Submit</button>
 </form>
-```
-
-4. Validate CSRF Tokens:
-
-Flask-WTF automatically handles CSRF token validation on form submissions. Ensure that your views check for CSRF protection by using decorators:
-
-```python
-from flask_wtf import csrf
-
-@app.route('/your_route', methods=['POST'])
-@csrf.protect
-def your_view():     
-	# Handle form submission
 ```
 
 ### Content Security Policy (CSP) Header not set
@@ -294,35 +278,17 @@ Ensure that your web server, application server, load balancer, etc. is configur
 
 #### Flask solution
 
-1. Create a CSP Policy:
 
-- Define your Content Security Policy by specifying trusted sources for various types of resources like scripts, styles, fonts, etc. For instance:
-
-```python
-csp_policy = {    
-		'default-src': '\'self\'',
-		'script-src': ['\'self\'', 'https://example.com'],
-		'style-src': ['\'self\'', 'https://example.com'],
-		# Add more directives as per your application's requirements
-}
-```
-
-2. Implement CSP in Flask:
+1. Implement CSP in Flask:
 
 - In your Flask application, use a `before_request` decorator to set the CSP header for each request.
 
 ```python
-
-from flask import Flask, Response  
-
-app = Flask(__name__)  
-
-@app.before_request
-	def add_csp_header(): 
-	    csp = "; ".join([f"{key} {value}" for key, value in csp_policy.items()])
-	    resp = Response()
-	    resp.headers['Content-Security-Policy'] = csp
-	    return resp
+@app.after_request
+def add_security_headers(resp):
+    csp = "default-src 'self'; style-src 'self' https://stackpath.bootstrapcdn.com 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+    resp.headers['Content-Security-Policy'] = csp
+    return resp
 ```
 
 ### Missing Anti-clickjacking Header
@@ -504,19 +470,36 @@ In my project i used sanitization to prevent SQL injection.
 
 ### Sanitization
 
-I used SQLAlchemys `.text` function and the builtin flask library Markup, with `Markup.escape` to sanitize the user-input from my sign-up and login form. This strips the input from special characters which could lead to an input being intrepreted as code.
+I used flasks built-in `Markup.escape` to sanitise the user-input from my sign-up and login form. This strips the input from special characters which could lead to an input being interpreted as code.
 
 `app.py:59-62`
 
 ```python
 from flask import Markup
-from flask_sqlalchemy import SQLAlchemy
 
-sanitized_password = SQLAlchemy.text(request.form.get("password"))
-sanitized_username = SQLAlchemy.text(request.form.get("username"))
-safe_password = Markup.escape(sanitized_password)
-safe_username = Markup.escape(sanitized_username)
+safe_password = Markup.escape(request.form.get("password"))
+safe_username = Markup.escape(request.form.get("username"))
 ```
+
+### CSRF-Tokens
+
+I imported the flask-wtf library to use their app-wide crsf-protection:
+
+```python
+from flask_wtf.csrf import CSRFProtect
+```
+
+Then we can use `csrf = CSRFProtect(app)` to protect the whole app.
+#### Forms
+
+For forms, we can additionally add a hidden field with a crsf_token to protect our forms:
+
+```python
+<form>
+	<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+</form>
+```
+
 
 # Summary
 

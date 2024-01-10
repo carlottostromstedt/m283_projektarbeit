@@ -11,8 +11,11 @@ from werkzeug.utils import secure_filename
 from flask import send_from_directory
 from datetime import datetime
 from fusions import *
+from flask_wtf.csrf import CSRFProtect
+from flask_csp.csp import csp_header
 
 app = Flask(__name__)
+csrf = CSRFProtect(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db.sqlite"
 app.config["SECRET_KEY"] = "abc"
 
@@ -25,6 +28,13 @@ bcrypt = Bcrypt(app)  # Initialize Flask-Bcrypt
 
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+
+@app.after_request
+def add_security_headers(resp):
+    csp = "default-src 'self'; style-src 'self' https://stackpath.bootstrapcdn.com 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+    resp.headers['Content-Security-Policy'] = csp
+    return resp
 
 class Users(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -56,10 +66,8 @@ def loader_user(user_id):
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        sanitized_password = SQLAlchemy.text(request.form.get("password"))
-        sanitized_username = SQLAlchemy.text(request.form.get("username"))
-        safe_password = Markup.escape(sanitized_password)
-        safe_username = Markup.escape(sanitized_username)
+        safe_password = Markup.escape(request.form.get("password"))
+        safe_username = Markup.escape(request.form.get("username"))
         hashed_password = bcrypt.generate_password_hash(safe_password).decode('utf-8')
         user = Users(username=safe_username, password=hashed_password)
         db.session.add(user)
@@ -71,10 +79,8 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        sanitized_password = SQLAlchemy.text(request.form.get("password"))
-        sanitized_username = SQLAlchemy.text(request.form.get("username"))
-        safe_password = Markup.escape(sanitized_password)
-        safe_username = Markup.escape(sanitized_username)
+        safe_password = Markup.escape(request.form.get("password"))
+        safe_username = Markup.escape(request.form.get("username"))
         user = Users.query.filter_by(username=safe_username).first()
         if user and bcrypt.check_password_hash(user.password, safe_password):
             login_user(user)

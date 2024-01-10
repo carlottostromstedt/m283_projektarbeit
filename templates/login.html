@@ -5,6 +5,7 @@
 		<div class="card card-login">
 			<h1>Login</h1>
 			<form class="mt-4" action="#" method="post">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 			<label for="username">Username:</label><br>
 			<input type="text" name="username"/><br>
 			<label for="password" class="mt-2">Password:</label><br>

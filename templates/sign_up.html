@@ -37,6 +37,7 @@
 <div class="login-container">
 	<div class="card card-login">
 		<form id="signUp" action="#" method="post" class="align-items-center">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 			<h1>Sign up</h1>
 			<label for="username">Username:</label><br>
 			<input type="text" name="username"/><br>
