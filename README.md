@@ -522,6 +522,8 @@ Either my Implementations actually fixed those errors or something changed with 
 
 ![scan after](assets/scan_after.png)
 
+## Summary
+
 I was able to use ZAP to scan my Application for vulnerabilities. I was able to analyse this scan and gather general suggestions from ZAP for patching the vulnerablilites. Additionally i put together Flask specific suggestions for each of the vulnerablility and how one could patch the Application.
 
 Scanning was fairly straight forward with ZAP, but for configuring the context (Login-Credentials) i needed to delve into the Documentation. ZAP has a lot of options where one can customize a lot. What is cool as well was
