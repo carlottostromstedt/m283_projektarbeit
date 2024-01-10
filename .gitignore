@@ -1,0 +1,4 @@
+__pycache__
+.env
+/fm/lib
+.DS_Store
